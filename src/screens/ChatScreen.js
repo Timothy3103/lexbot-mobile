@@ -11,18 +11,19 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { postToN8n } from "../utils/n8n";
 
 const chatSessionCache = {};
 
 export default function ChatScreen({ navigation, route }) {
-  const { topic, icon } = route.params || {};
+  const { topic, icon, language: initialLanguage } = route.params || {};
 
-  const getOpeningMessage = () => {
+  const getOpeningMessage = useCallback(() => {
     if (topic) {
       return `Hello! I'm LexBot, your Nigerian legal guide. I can see you're asking about ${icon} ${topic}. What's your question? You can ask in English or Pidgin.`;
     }
     return "Hello! I'm LexBot, your Nigerian legal guide. How can I help you today? You can ask in English or Pidgin.";
-  };
+  }, [topic, icon]);
 
   const chatKey = topic ? `chat-${topic}` : "chat-default";
 
@@ -35,6 +36,7 @@ export default function ChatScreen({ navigation, route }) {
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [language, setLanguage] = useState(initialLanguage || "EN");
 
   useFocusEffect(
     useCallback(() => {
@@ -49,7 +51,7 @@ export default function ChatScreen({ navigation, route }) {
           },
         ]);
       }
-    }, [chatKey, topic]),
+    }, [chatKey, getOpeningMessage]),
   );
 
   useEffect(() => {
@@ -57,11 +59,10 @@ export default function ChatScreen({ navigation, route }) {
   }, [chatKey, messages]);
   const flatListRef = useRef(null);
 
-  const WEBHOOK_URL =
-    "https://niffyjade-n8n-free.hf.space/webhook/5ccdc6e2-b7e5-40bc-a574-a470fe473639";
-
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
+
+    console.log("Sending with language:", language); // ADD THIS LIN
 
     const userMessage = {
       id: Date.now().toString(),
@@ -78,38 +79,26 @@ export default function ChatScreen({ navigation, route }) {
     setLoading(true);
 
     try {
-      const response = await fetch(WEBHOOK_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          role: "user",
-          text: userMessage.text,
-          messageId: userMessage.id,
-          // Optionally include more context (user id, locale, history, etc.)
-        }),
+      const data = await postToN8n({
+        message: userMessage.text,
+        language: language,
+        topic,
+        icon,
+        history: messages
+          .filter(
+            (m) =>
+              (m.id !== "__loading__" && m.role !== "ai") || m.role === "ai",
+          )
+          .filter((m) => m.id !== "1")
+          .map((m) => ({
+            role: m.role === "ai" ? "assistant" : "user",
+            content: m.text,
+          })),
       });
-
-      if (!response.ok) {
-        throw new Error(`Webhook error ${response.status}`);
-      }
-
-      const text = await response.text();
-      let data = null;
-      if (text.trim()) {
-        try {
-          data = JSON.parse(text);
-        } catch (jsonError) {
-          console.warn("n8n response is not valid JSON", jsonError, text);
-        }
-      }
-
       const aiText =
-        data?.reply ||
-        data?.message ||
-        data?.answer ||
-        text.trim() ||
+        (typeof data === "string"
+          ? data
+          : data?.reply || data?.message || data?.answer) ||
         "n8n did not return a response. Please check your workflow.";
 
       const aiMessage = {
@@ -177,7 +166,7 @@ export default function ChatScreen({ navigation, route }) {
     });
   };
 
-  const renderMessage = ({ item }) => {
+  const renderMessage = useCallback(({ item }) => {
     const isAI = item.role === "ai";
     const formatted = formatMessageText(item.text);
 
@@ -213,7 +202,7 @@ export default function ChatScreen({ navigation, route }) {
         </View>
       </View>
     );
-  };
+  }, []);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -231,9 +220,12 @@ export default function ChatScreen({ navigation, route }) {
           </Text>
           <Text style={styles.headerStatus}>🟢 Online · Nigerian Law</Text>
         </View>
-        <View style={styles.headerLang}>
-          <Text style={styles.headerLangText}>EN</Text>
-        </View>
+        <TouchableOpacity
+          style={styles.headerLang}
+          onPress={() => setLanguage((prev) => (prev === "EN" ? "PID" : "EN"))}
+        >
+          <Text style={styles.headerLangText}>{language}</Text>
+        </TouchableOpacity>
       </View>
 
       <KeyboardAvoidingView
@@ -250,6 +242,9 @@ export default function ChatScreen({ navigation, route }) {
           onContentSizeChange={() =>
             flatListRef.current?.scrollToEnd({ animated: true })
           }
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={10}
+          windowSize={10}
         />
 
         <View style={styles.inputRow}>

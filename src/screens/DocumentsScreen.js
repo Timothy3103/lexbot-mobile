@@ -91,7 +91,7 @@ export default function DocumentsScreen({ navigation }) {
       >
         {/* Intro */}
         <Text style={styles.intro}>
-          Select a document type. We'll guide you through the details step by
+          Select a document type. We&apos;ll guide you through the details step by
           step.
         </Text>
 

@@ -43,6 +43,9 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "N8N_WEBHOOK_URL": "https://lexbot-server.onrender.com/webhook/chat"
     }
   }
 }

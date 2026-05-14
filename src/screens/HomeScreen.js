@@ -88,7 +88,9 @@ export default function HomeScreen({ navigation }) {
           {/* ── ASK BAR ── */}
           <TouchableOpacity
             style={styles.askBar}
-            onPress={() => navigation.navigate("Chat", { topic: null })}
+            onPress={() =>
+              navigation.navigate("Chat", { topic: null, language: lang })
+            }
             activeOpacity={0.8}
           >
             <Text style={styles.askIcon}>💬</Text>
@@ -117,6 +119,7 @@ export default function HomeScreen({ navigation }) {
                   navigation.navigate("Chat", {
                     topic: topic.title,
                     icon: topic.icon,
+                    language: lang,
                   })
                 }
                 activeOpacity={0.8}
@@ -211,7 +214,7 @@ export default function HomeScreen({ navigation }) {
             onPress={() => {
               setActiveNav(item.screen);
               if (item.screen === "Chat") {
-                navigation.navigate("Chat", { topic: null });
+                navigation.navigate("Chat", { topic: null, language: lang });
               } else {
                 navigation.navigate(item.screen);
               }

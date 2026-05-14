@@ -1,15 +1,17 @@
 import { useState } from "react";
 import {
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { postToN8n } from "../utils/n8n";
 
 export default function DocumentFormScreen({ navigation, route }) {
   const { type, icon, fields } = route.params || {};
@@ -19,6 +21,7 @@ export default function DocumentFormScreen({ navigation, route }) {
     fields.reduce((acc, field) => ({ ...acc, [field]: "" }), {}),
   );
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const updateField = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -26,9 +29,28 @@ export default function DocumentFormScreen({ navigation, route }) {
 
   const isFormComplete = fields.every((field) => formData[field].trim() !== "");
 
-  const handleGenerate = () => {
-    if (!isFormComplete) return;
-    setSubmitted(true);
+  const handleGenerate = async () => {
+    if (!isFormComplete || submitting) return;
+
+    setSubmitting(true);
+    try {
+      await postToN8n({
+        event: "document.form.submitted",
+        type,
+        icon,
+        fields,
+        formData,
+        submittedAt: new Date().toISOString(),
+      });
+      setSubmitted(true);
+    } catch (error) {
+      Alert.alert(
+        "Webhook Error",
+        error.message || "Unable to send data to n8n. Please try again.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (submitted) {
@@ -165,16 +187,18 @@ export default function DocumentFormScreen({ navigation, route }) {
           <TouchableOpacity
             style={[
               styles.generateBtn,
-              !isFormComplete && styles.generateBtnDisabled,
+              (!isFormComplete || submitting) && styles.generateBtnDisabled,
             ]}
             onPress={handleGenerate}
-            disabled={!isFormComplete}
+            disabled={!isFormComplete || submitting}
             activeOpacity={0.85}
           >
             <Text style={styles.generateBtnText}>
-              {isFormComplete
-                ? "📄 Generate Document"
-                : "Complete all fields to generate"}
+              {submitting
+                ? "Sending to n8n..."
+                : isFormComplete
+                  ? "📄 Generate Document"
+                  : "Complete all fields to generate"}
             </Text>
           </TouchableOpacity>
         </ScrollView>
