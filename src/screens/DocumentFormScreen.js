@@ -1,3 +1,5 @@
+import * as Print from "expo-print";
+import * as Sharing from "expo-sharing";
 import { useState } from "react";
 import {
   Alert,
@@ -11,17 +13,17 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { postToN8n } from "../utils/n8n";
+import { generateDocument } from "../utils/n8n";
 
 export default function DocumentFormScreen({ navigation, route }) {
   const { type, icon, fields } = route.params || {};
 
-  // Dynamically create state for each field
   const [formData, setFormData] = useState(
     fields.reduce((acc, field) => ({ ...acc, [field]: "" }), {}),
   );
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [generatedDocument, setGeneratedDocument] = useState("");
 
   const updateField = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -34,22 +36,124 @@ export default function DocumentFormScreen({ navigation, route }) {
 
     setSubmitting(true);
     try {
-      await postToN8n({
-        event: "document.form.submitted",
+      const data = await generateDocument({
         type,
         icon,
         fields,
         formData,
-        submittedAt: new Date().toISOString(),
+        language: "EN",
       });
+
+      const documentText = data?.document || "Document could not be generated.";
+      setGeneratedDocument(documentText);
       setSubmitted(true);
     } catch (error) {
       Alert.alert(
-        "Webhook Error",
-        error.message || "Unable to send data to n8n. Please try again.",
+        "Generation Error",
+        error.message || "Unable to generate document. Please try again.",
       );
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const renderFormattedDocument = (text) => {
+    const lines = text.split("\n");
+    return lines.map((line, index) => {
+      const trimmed = line.trim();
+
+      if (trimmed.startsWith("### ")) {
+        return (
+          <Text key={index} style={styles.docHeading3}>
+            {trimmed.replace("### ", "")}
+          </Text>
+        );
+      }
+
+      if (trimmed.startsWith("## ")) {
+        return (
+          <Text key={index} style={styles.docHeading2}>
+            {trimmed.replace("## ", "")}
+          </Text>
+        );
+      }
+
+      if (trimmed.startsWith("**") && trimmed.endsWith("**")) {
+        return (
+          <Text key={index} style={styles.docBold}>
+            {trimmed.replace(/\*\*/g, "")}
+          </Text>
+        );
+      }
+
+      if (trimmed === "") {
+        return <View key={index} style={{ height: 8 }} />;
+      }
+
+      const parts = trimmed.split(/(\*\*.*?\*\*)/g);
+      return (
+        <Text key={index} style={styles.documentText}>
+          {parts.map((part, i) => {
+            if (part.startsWith("**") && part.endsWith("**")) {
+              return (
+                <Text key={i} style={styles.docInlineBold}>
+                  {part.replace(/\*\*/g, "")}
+                </Text>
+              );
+            }
+            return part;
+          })}
+        </Text>
+      );
+    });
+  };
+
+  const handleDownload = async () => {
+    try {
+      const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: Georgia, serif; padding: 40px; color: #111; line-height: 1.6; }
+            h1 { text-align: center; font-size: 20px; margin-bottom: 4px; }
+            h2 { font-size: 15px; font-weight: bold; margin-top: 20px; text-transform: uppercase; }
+            h3 { font-size: 14px; color: #555; margin-top: 16px; }
+            p { font-size: 13px; margin: 6px 0; }
+            .date { text-align: center; color: #888; font-size: 12px; margin-bottom: 24px; }
+            .disclaimer { border-top: 1px solid #ccc; margin-top: 30px; padding-top: 12px; font-size: 11px; color: #888; }
+          </style>
+        </head>
+        <body>
+          <h1>${icon} ${type}</h1>
+          <p class="date">Generated: ${new Date().toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" })}</p>
+          ${generatedDocument
+            .split("\n")
+            .map((line) => {
+              const trimmed = line.trim();
+              if (trimmed.startsWith("### "))
+                return `<h3>${trimmed.replace("### ", "")}</h3>`;
+              if (trimmed.startsWith("## "))
+                return `<h2>${trimmed.replace("## ", "")}</h2>`;
+              if (trimmed.startsWith("**") && trimmed.endsWith("**"))
+                return `<h2>${trimmed.replace(/\*\*/g, "")}</h2>`;
+              if (trimmed === "") return "<br/>";
+              return `<p>${trimmed.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")}</p>`;
+            })
+            .join("")}
+        </body>
+      </html>
+    `;
+
+      const { uri } = await Print.printToFileAsync({ html: htmlContent });
+      await Sharing.shareAsync(uri, {
+        mimeType: "application/pdf",
+        dialogTitle: `Share ${type}`,
+        UTI: "com.adobe.pdf",
+      });
+    } catch (_error) {
+      Alert.alert("Error", "Could not download document as PDF.");
     }
   };
 
@@ -78,35 +182,30 @@ export default function DocumentFormScreen({ navigation, route }) {
               {icon} {type}
             </Text>
             <Text style={styles.previewDate}>
-              Date:{" "}
+              Generated:{" "}
               {new Date().toLocaleDateString("en-NG", {
                 day: "numeric",
                 month: "long",
                 year: "numeric",
               })}
             </Text>
-
             <View style={styles.previewDivider} />
-
-            {fields.map((field, index) => (
-              <View key={index} style={styles.previewRow}>
-                <Text style={styles.previewLabel}>{field}:</Text>
-                <Text style={styles.previewValue}>{formData[field]}</Text>
-              </View>
-            ))}
-
-            <View style={styles.previewDivider} />
-
-            <Text style={styles.previewDisclaimer}>
-              ⚠️ This document is generated for guidance purposes only and does
-              not constitute legal advice. Please have it reviewed by a
-              qualified Nigerian lawyer before use.
-            </Text>
+            <View>{renderFormattedDocument(generatedDocument)}</View>
           </View>
+
+          <TouchableOpacity style={styles.downloadBtn} onPress={handleDownload}>
+            <Text style={styles.downloadBtnText}>⬇️ Download Document</Text>
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.newDocBtn}
-            onPress={() => navigation.goBack()}
+            onPress={() => {
+              setSubmitted(false);
+              setGeneratedDocument("");
+              setFormData(
+                fields.reduce((acc, field) => ({ ...acc, [field]: "" }), {}),
+              );
+            }}
           >
             <Text style={styles.newDocBtnText}>Generate Another Document</Text>
           </TouchableOpacity>
@@ -124,7 +223,6 @@ export default function DocumentFormScreen({ navigation, route }) {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backBtn}
@@ -151,7 +249,6 @@ export default function DocumentFormScreen({ navigation, route }) {
             Fill in the details below. All fields are required.
           </Text>
 
-          {/* Form fields */}
           {fields.map((field, index) => (
             <View key={index} style={styles.fieldGroup}>
               <Text style={styles.fieldLabel}>{field}</Text>
@@ -165,7 +262,6 @@ export default function DocumentFormScreen({ navigation, route }) {
             </View>
           ))}
 
-          {/* Progress indicator */}
           <View style={styles.progressRow}>
             <Text style={styles.progressText}>
               {fields.filter((f) => formData[f].trim() !== "").length} of{" "}
@@ -183,7 +279,6 @@ export default function DocumentFormScreen({ navigation, route }) {
             </View>
           </View>
 
-          {/* Generate button */}
           <TouchableOpacity
             style={[
               styles.generateBtn,
@@ -195,7 +290,7 @@ export default function DocumentFormScreen({ navigation, route }) {
           >
             <Text style={styles.generateBtnText}>
               {submitting
-                ? "Sending to n8n..."
+                ? "✨ Generating document..."
                 : isFormComplete
                   ? "📄 Generate Document"
                   : "Complete all fields to generate"}
@@ -326,26 +421,46 @@ const styles = StyleSheet.create({
     backgroundColor: "#1E2D45",
     marginVertical: 4,
   },
-  previewRow: {
-    gap: 4,
-  },
-  previewLabel: {
-    fontSize: 11,
-    color: "#C8922A",
-    fontWeight: "700",
-    letterSpacing: 1,
-    textTransform: "uppercase",
-  },
-  previewValue: {
-    fontSize: 14,
+  documentText: {
+    fontSize: 13,
     color: "#F1F5F9",
-    lineHeight: 20,
+    lineHeight: 22,
   },
-  previewDisclaimer: {
-    fontSize: 12,
-    color: "#E5B04A",
-    lineHeight: 18,
-    marginTop: 4,
+  docHeading2: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#F1F5F9",
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  docHeading3: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#C8922A",
+    marginTop: 10,
+    marginBottom: 2,
+  },
+  docBold: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#F1F5F9",
+    marginTop: 6,
+  },
+  docInlineBold: {
+    fontWeight: "700",
+    color: "#F1F5F9",
+  },
+  downloadBtn: {
+    backgroundColor: "#C8922A",
+    paddingVertical: 14,
+    borderRadius: 50,
+    alignItems: "center",
+    elevation: 4,
+  },
+  downloadBtnText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "700",
   },
   newDocBtn: {
     backgroundColor: "#1A2235",

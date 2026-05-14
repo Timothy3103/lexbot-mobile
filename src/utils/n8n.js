@@ -32,3 +32,32 @@ export async function postToN8n(payload) {
     return text;
   }
 }
+
+export async function generateDocument(payload) {
+  const response = await fetch(
+    "https://lexbot-server.onrender.com/webhook/document",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    },
+  );
+
+  if (!response.ok) {
+    const bodyText = await response.text();
+    throw new Error(
+      `Document generation returned ${response.status}: ${bodyText || "No response body"}`,
+    );
+  }
+
+  const text = await response.text();
+  if (!text) return null;
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+}
