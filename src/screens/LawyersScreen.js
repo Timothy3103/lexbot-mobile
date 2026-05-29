@@ -1,11 +1,12 @@
 import { useState } from "react";
 import {
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Linking,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -18,6 +19,7 @@ const lawyers = [
     experience: "8 years",
     fee: "₦15,000/hr",
     phone: "+234 801 234 5678",
+    whatsapp: "2348012345678",
     available: true,
   },
   {
@@ -28,6 +30,7 @@ const lawyers = [
     experience: "12 years",
     fee: "₦20,000/hr",
     phone: "+234 802 345 6789",
+    whatsapp: "2348023456789",
     available: true,
   },
   {
@@ -38,6 +41,7 @@ const lawyers = [
     experience: "6 years",
     fee: "₦10,000/hr",
     phone: "+234 803 456 7890",
+    whatsapp: "2348034567890",
     available: false,
   },
   {
@@ -48,6 +52,7 @@ const lawyers = [
     experience: "15 years",
     fee: "₦25,000/hr",
     phone: "+234 804 567 8901",
+    whatsapp: "2348045678901",
     available: true,
   },
   {
@@ -58,6 +63,7 @@ const lawyers = [
     experience: "10 years",
     fee: "₦18,000/hr",
     phone: "+234 805 678 9012",
+    whatsapp: "2348056789012",
     available: true,
   },
   {
@@ -68,6 +74,7 @@ const lawyers = [
     experience: "7 years",
     fee: "₦12,000/hr",
     phone: "+234 806 789 0123",
+    whatsapp: "2348067890123",
     available: false,
   },
   {
@@ -78,6 +85,7 @@ const lawyers = [
     experience: "5 years",
     fee: "₦8,000/hr",
     phone: "+234 807 890 1234",
+    whatsapp: "2348078901234",
     available: true,
   },
   {
@@ -88,6 +96,7 @@ const lawyers = [
     experience: "20 years",
     fee: "₦30,000/hr",
     phone: "+234 808 901 2345",
+    whatsapp: "2348089012345",
     available: true,
   },
 ];
@@ -284,25 +293,50 @@ export default function LawyersScreen({ navigation }) {
               </View>
 
               {/* Contact button */}
-              <TouchableOpacity
-                style={[
-                  styles.contactBtn,
-                  !lawyer.available && styles.contactBtnDisabled,
-                ]}
-                disabled={!lawyer.available}
-                activeOpacity={0.8}
-              >
-                <Text
+              {/* Contact buttons */}
+              <View style={styles.contactRow}>
+                <TouchableOpacity
                   style={[
-                    styles.contactBtnText,
-                    !lawyer.available && styles.contactBtnTextDisabled,
+                    styles.contactBtn,
+                    !lawyer.available && styles.contactBtnDisabled,
                   ]}
+                  disabled={!lawyer.available}
+                  activeOpacity={0.8}
+                  onPress={() => Linking.openURL(`tel:${lawyer.phone}`)}
                 >
-                  {lawyer.available
-                    ? `📞 ${lawyer.phone}`
-                    : "Currently Unavailable"}
-                </Text>
-              </TouchableOpacity>
+                  <Text
+                    style={[
+                      styles.contactBtnText,
+                      !lawyer.available && styles.contactBtnTextDisabled,
+                    ]}
+                  >
+                    {lawyer.available ? "📞 Call" : "Unavailable"}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.whatsappBtn,
+                    !lawyer.available && styles.contactBtnDisabled,
+                  ]}
+                  disabled={!lawyer.available}
+                  activeOpacity={0.8}
+                  onPress={() =>
+                    Linking.openURL(
+                      `https://wa.me/${lawyer.whatsapp}?text=Hello%2C%20I%20found%20you%20on%20LexBot%20and%20I%20need%20legal%20assistance.`,
+                    )
+                  }
+                >
+                  <Text
+                    style={[
+                      styles.whatsappBtnText,
+                      !lawyer.available && styles.contactBtnTextDisabled,
+                    ]}
+                  >
+                    {lawyer.available ? "💬 WhatsApp" : ""}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
           ))
         )}
@@ -517,12 +551,30 @@ const styles = StyleSheet.create({
     width: 1,
     backgroundColor: "#1E2D45",
   },
+  contactRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
   contactBtn: {
+    flex: 1,
     backgroundColor: "#C8922A",
     paddingVertical: 12,
     borderRadius: 50,
     alignItems: "center",
     elevation: 4,
+  },
+  whatsappBtn: {
+    flex: 1,
+    backgroundColor: "#25D366",
+    paddingVertical: 12,
+    borderRadius: 50,
+    alignItems: "center",
+    elevation: 4,
+  },
+  whatsappBtnText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "700",
   },
   contactBtnDisabled: {
     backgroundColor: "#1A2235",
