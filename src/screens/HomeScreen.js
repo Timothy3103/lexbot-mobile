@@ -27,6 +27,7 @@ const topics = [
   { icon: "🏢", title: "Business & CAMA", desc: "Registration, contracts" },
   { icon: "👨‍👩‍👧", title: "Family Law", desc: "Marriage, divorce, custody" },
   { icon: "🌍", title: "Land & Property", desc: "Land Use Act, ownership" },
+  { icon: "🕐", label: "History", screen: "ChatHistory" },
 ];
 
 const navItems = [
@@ -35,6 +36,7 @@ const navItems = [
   { icon: "📚", label: "Topics", screen: "Topics" },
   { icon: "📄", label: "Docs", screen: "Documents" },
   { icon: "👨‍⚖️", label: "Lawyers", screen: "Lawyers" },
+  { icon: "🕐", label: "History", screen: "ChatHistory" },
 ];
 
 export default function HomeScreen({ navigation }) {

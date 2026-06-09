@@ -11,6 +11,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { saveChatSession } from "../utils/chatHistory";
 import { postToN8n } from "../utils/n8n";
 
 const chatSessionCache = {};
@@ -57,6 +58,20 @@ export default function ChatScreen({ navigation, route }) {
   useEffect(() => {
     chatSessionCache[chatKey] = messages;
   }, [chatKey, messages]);
+
+  useEffect(() => {
+    if (messages.length > 1) {
+      const session = {
+        id: chatKey,
+        topic: topic || "General",
+        icon: icon || "💬",
+        messages,
+        lastMessage: messages[messages.length - 1]?.text || "",
+        updatedAt: new Date().toISOString(),
+      };
+      saveChatSession(session);
+    }
+  }, [messages]);
 
   const flatListRef = useRef(null);
 

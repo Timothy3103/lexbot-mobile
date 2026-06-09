@@ -1,6 +1,7 @@
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 
+import ChatHistoryScreen from "../screens/ChatHistoryScreen";
 import ChatScreen from "../screens/ChatScreen";
 import DisclaimerScreen from "../screens/DisclaimerScreen";
 import DocumentFormScreen from "../screens/DocumentFormScreen";
@@ -29,6 +30,7 @@ export default function AppNavigator() {
         <Stack.Screen name="Lawyers" component={LawyersScreen} />
         <Stack.Screen name="Documents" component={DocumentsScreen} />
         <Stack.Screen name="DocumentForm" component={DocumentFormScreen} />
+        <Stack.Screen name="ChatHistory" component={ChatHistoryScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
