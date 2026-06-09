@@ -1,11 +1,6 @@
 import { useFocusEffect } from "@react-navigation/native";
-import {
-  ExpoSpeechRecognitionModule,
-  useSpeechRecognitionEvent,
-} from "expo-speech-recognition";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Alert,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -42,21 +37,6 @@ export default function ChatScreen({ navigation, route }) {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [language, setLanguage] = useState(initialLanguage || "EN");
-  const [listening, setListening] = useState(false);
-
-  useSpeechRecognitionEvent("result", (event) => {
-    if (event.results && event.results.length > 0) {
-      setInput(event.results[0].transcript);
-    }
-  });
-
-  useSpeechRecognitionEvent("end", () => {
-    setListening(false);
-  });
-
-  useSpeechRecognitionEvent("error", () => {
-    setListening(false);
-  });
 
   useFocusEffect(
     useCallback(() => {
@@ -77,40 +57,11 @@ export default function ChatScreen({ navigation, route }) {
   useEffect(() => {
     chatSessionCache[chatKey] = messages;
   }, [chatKey, messages]);
+
   const flatListRef = useRef(null);
-
-  const startListening = async () => {
-    try {
-      const result =
-        await ExpoSpeechRecognitionModule.requestPermissionsAsync();
-      if (!result.granted) {
-        Alert.alert(
-          "Permission Required",
-          "Microphone permission is needed for voice input.",
-        );
-        return;
-      }
-      setListening(true);
-      ExpoSpeechRecognitionModule.start({
-        lang: "en-NG",
-        interimResults: true,
-        continuous: false,
-      });
-    } catch (_error) {
-      setListening(false);
-      Alert.alert("Error", "Could not start voice recognition.");
-    }
-  };
-
-  const stopListening = () => {
-    ExpoSpeechRecognitionModule.stop();
-    setListening(false);
-  };
 
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
-
-    console.log("Sending with language:", language); // ADD THIS LIN
 
     const userMessage = {
       id: Date.now().toString(),
@@ -133,21 +84,19 @@ export default function ChatScreen({ navigation, route }) {
         topic,
         icon,
         history: messages
-          .filter(
-            (m) =>
-              (m.id !== "__loading__" && m.role !== "ai") || m.role === "ai",
-          )
+          .filter((m) => m.id !== "__loading__")
           .filter((m) => m.id !== "1")
           .map((m) => ({
             role: m.role === "ai" ? "assistant" : "user",
             content: m.text,
           })),
       });
+
       const aiText =
         (typeof data === "string"
           ? data
           : data?.reply || data?.message || data?.answer) ||
-        "n8n did not return a response. Please check your workflow.";
+        "LexBot did not return a response. Please try again.";
 
       const aiMessage = {
         id: (Date.now() + 1).toString(),
@@ -163,7 +112,7 @@ export default function ChatScreen({ navigation, route }) {
       const errorMessage = {
         id: (Date.now() + 1).toString(),
         role: "ai",
-        text: `⚠️ Error connecting to n8n: ${error.message}`,
+        text: `⚠️ Error connecting to server: ${error.message}`,
       };
       setMessages((prev) => [
         ...prev.filter((m) => m.id !== "__loading__"),
@@ -296,22 +245,14 @@ export default function ChatScreen({ navigation, route }) {
         />
 
         <View style={styles.inputRow}>
-          <TouchableOpacity
-            style={[styles.micBtn, listening && styles.micBtnActive]}
-            onPress={listening ? stopListening : startListening}
-          >
-            <Text style={styles.micIcon}>{listening ? "⏹" : "🎤"}</Text>
-          </TouchableOpacity>
-
           <TextInput
             style={styles.input}
-            placeholder={listening ? "Listening..." : "Type your question..."}
-            placeholderTextColor={listening ? "#C8922A" : "#64748B"}
+            placeholder="Type your question..."
+            placeholderTextColor="#64748B"
             value={input}
             onChangeText={setInput}
             multiline
           />
-
           <TouchableOpacity
             style={[
               styles.sendBtn,
@@ -459,23 +400,5 @@ const styles = StyleSheet.create({
   sendIcon: {
     color: "#fff",
     fontSize: 16,
-  },
-
-  micBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#1A2235",
-    borderWidth: 1,
-    borderColor: "#1E2D45",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  micBtnActive: {
-    backgroundColor: "rgba(200, 146, 42, 0.2)",
-    borderColor: "#C8922A",
-  },
-  micIcon: {
-    fontSize: 18,
   },
 });

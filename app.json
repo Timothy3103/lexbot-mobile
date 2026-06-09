@@ -35,13 +35,6 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      [
-        "expo-speech-recognition",
-        {
-          "microphonePermission": "Allow LexBot to use your microphone for voice input.",
-          "speechRecognitionPermission": "Allow LexBot to recognize your speech."
-        }
-      ],
       "expo-router",
       [
         "expo-splash-screen",
@@ -54,8 +47,7 @@
             "backgroundColor": "#000000"
           }
         }
-      ],
-      "expo-speech-recognition"
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
